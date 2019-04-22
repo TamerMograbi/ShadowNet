@@ -19,6 +19,7 @@ class BaseOptions():
 
     def initialize(self, parser):
         """Define the common options that are used in both training and test."""
+        print("Base options initialize")
         # basic parameters
         parser.add_argument('--dataroot', required=True, help='path to images (should have subfolders trainA, trainB, valA, valB, etc)')
         parser.add_argument('--name', type=str, default='experiment_name', help='name of the experiment. It decides where to store samples and models')
@@ -65,6 +66,7 @@ class BaseOptions():
         """
         if not self.initialized:  # check if it has been initialized
             parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+            # the call is made to train_options.initialize() first which internally calls base_options.initialize()
             parser = self.initialize(parser)
 
         # get the basic options

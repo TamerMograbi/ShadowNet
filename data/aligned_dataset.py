@@ -2,7 +2,8 @@ import os.path
 from data.base_dataset import BaseDataset, get_params, get_transform
 from data.image_folder import make_dataset
 from PIL import Image
-
+import cv2
+import numpy as np
 
 class AlignedDataset(BaseDataset):
     """A dataset class for paired image dataset.
@@ -45,6 +46,8 @@ class AlignedDataset(BaseDataset):
         A = AB.crop((0, 0, w2, h))
         B = AB.crop((w2, 0, w, h))
 
+        print("before: ", A.shape)
+
         # apply the same transform to both A and B
         transform_params = get_params(self.opt, A.size)
         A_transform = get_transform(self.opt, transform_params, grayscale=(self.input_nc == 1))
@@ -53,8 +56,44 @@ class AlignedDataset(BaseDataset):
         A = A_transform(A)
         B = B_transform(B)
 
-        return {'A': A, 'B': B, 'A_paths': AB_path, 'B_paths': AB_path}
+        print("after: ", A.shape)
 
+        return {'A': A, 'B': B, 'A_paths': AB_path, 'B_paths': AB_path}
+    """
+    def __getitem__(self, index):
+        Return a data point and its metadata information.
+
+        Parameters:
+            index - - a random integer for data indexing
+
+        Returns a dictionary that contains A, B, A_paths and B_paths
+            A (tensor) - - an image in the input domain
+            B (tensor) - - its corresponding image in the target domain
+            A_paths (str) - - image paths
+            B_paths (str) - - image paths (same as A_paths)
+        
+        # read a image given a random integer index
+        AB_path = self.AB_paths[index]
+        AB = cv2.imread(AB_path, cv2.IMREAD_COLOR)
+        # split AB image into A {noShadow, lightMap, depthMap} and B {groundTruth}
+        height = AB.shape[0]
+        width = AB.shape[1]
+
+        noShadow = AB[:, :int(width/4), :]
+        lightMap = AB[:, int(width/4):int(width/2), :]
+        depthMap = AB[:, int(width/2):3 * int(width/4), :]
+
+        A = np.stack((noShadow[:,:,0], noShadow[:,:,1], noShadow[:,:,2], \
+                      lightMap[:,:,0], lightMap[:,:,1], lightMap[:,:,2], \
+                      depthMap[:,:,0]), axis=2)
+        # A has 7 channels - 3, 3, 1
+
+        print(A.shape)
+        # B has 3 channels
+        B = AB[:, 3*int(width/4):width, :]
+
+        return {'A':A, 'B':B, 'A_paths': AB_path, 'B_paths': AB_path}
+    """
     def __len__(self):
         """Return the total number of images in the dataset."""
         return len(self.AB_paths)

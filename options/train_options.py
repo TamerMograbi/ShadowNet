@@ -8,6 +8,7 @@ class TrainOptions(BaseOptions):
     """
 
     def initialize(self, parser):
+        print("Train options initialize")
         parser = BaseOptions.initialize(self, parser)
         # visdom and HTML visualization parameters
         parser.add_argument('--display_freq', type=int, default=400, help='frequency of showing training results on screen')
