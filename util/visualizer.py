@@ -75,9 +75,9 @@ class Visualizer():
         if self.display_id > 0:  # connect to a visdom server given <display_port> and <display_server>
             import visdom
             self.ncols = opt.display_ncols
-            self.vis = visdom.Visdom(server=opt.display_server, port=opt.display_port, env=opt.display_env)
-            if not self.vis.check_connection():
-                self.create_visdom_connections()
+            #self.vis = visdom.Visdom(server=opt.display_server, port=opt.display_port, env=opt.display_env)
+            #if not self.vis.check_connection():
+            #    self.create_visdom_connections()
 
         if self.use_html:  # create an HTML object at <checkpoints_dir>/web/; images will be saved under <checkpoints_dir>/web/images/
             self.web_dir = os.path.join(opt.checkpoints_dir, opt.name, 'web')
@@ -181,6 +181,15 @@ class Visualizer():
                     links.append(img_path)
                 webpage.add_images(ims, txts, links, width=self.win_size)
             webpage.save()
+
+    def saveImages(self, visuals, epoch):
+        for label, image in visuals.items():
+            if label == 'real_A':
+                image = image[:,:3,:,:]
+            image_numpy = util.tensor2im(image)
+            img_path = os.path.join(self.img_dir, 'epoch%.3d_%s.png' % (epoch, label))
+            util.save_image(image_numpy, img_path)
+            print("Saved image: ", img_path)
 
     def plot_current_losses(self, epoch, counter_ratio, losses):
         """display the current losses on visdom display: dictionary of error labels and values
