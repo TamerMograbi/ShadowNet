@@ -48,6 +48,19 @@ def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
         links.append(image_name)
     webpage.add_images(ims, txts, links, width=width)
 
+def saveImages(visuals, folderPath, phase, index):
+    folderPath = os.path.join(folderPath, phase)
+    if not os.path.isdir(folderPath):
+        os.mkdir(folderPath)
+    for label, image in visuals.items():
+        if label == 'real_A':
+            image = image[:,:3,:,:]
+        image_numpy = util.tensor2im(image)
+        imgName = str(index) + label + ".png"
+        imgPath = os.path.join(folderPath, imgName)
+        #img_path = os.path.join(self.img_dir, 'epoch%.3d_%s.png' % (epoch, label))
+        util.save_image(image_numpy, imgPath)
+        print("Saved image: ", imgPath)
 
 class Visualizer():
     """This class includes several functions that can display/save images and print/save logging information.
