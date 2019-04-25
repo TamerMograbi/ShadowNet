@@ -93,8 +93,8 @@ class AlignedDataset(BaseDataset):
         # B has 3 channels
         B = AB[:, 3*int(width/4):width, :]
 
-        A_transform = get_transform(self.opt, None, grayscale=(self.input_nc == 1))
-        B_transform = get_transform(self.opt, None, grayscale=(self.output_nc == 1))
+        A_transform = get_transform(self.opt, None, A.shape[2]) # third argument is number of channels
+        B_transform = get_transform(self.opt, None, B.shape[2]) # third argument is number of channels
 
         A = A_transform(A)
         B = B_transform(B)
