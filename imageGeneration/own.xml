@@ -25,6 +25,14 @@
 			<color name="albedo" value="0.725 0.71 0.68"/>
 		</bsdf>
 	</mesh>
+	
+	<mesh type="obj">
+		<string name="filename" value="chairNew.obj"/>
+
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.125 0.71 0.98"/>
+		</bsdf>
+	</mesh>
 
 	<mesh type="obj">
 		<string name="filename" value="light.obj"/>
