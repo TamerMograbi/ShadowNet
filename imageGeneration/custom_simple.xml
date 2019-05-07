@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<scene>
+	<integrator type="simple">
+        <point name="position" value=""/>
+        <color name="energy" value="3.76e2, 3.76e2, 3.76e2"/>
+	</integrator>
+
+	<camera type="perspective">
+		<float name="fov" value="60"/>
+		<transform name="toWorld">
+			<scale value="-1,1,1"/>
+			<lookat target="0, 0, 1" origin="0, 0, 0" up="0, 1, 0"/>
+		</transform>
+
+		<integer name="height" value="512"/>
+		<integer name="width" value="512"/>
+	</camera>
+	
+	<sampler type="independent">
+		<integer name="sampleCount" value="512"/>
+	</sampler>
+
+	<mesh type="obj">
+		<string name="filename" value="walls.obj"/>
+
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.725 0.71 0.68"/>
+		</bsdf>
+	</mesh>
+	
+	<mesh type="obj">
+		<string name="filename" value="tempMesh.obj"/>
+
+		<bsdf type="diffuse">
+			<color name="albedo" value="0.125 0.71 0.98"/>
+		</bsdf>
+	</mesh>
+
+	<mesh type="obj">
+		<string name="filename" value="tempLight.obj"/>
+
+		<emitter type="area">
+			<color name="radiance" value="40 40 40"/>
+		</emitter>
+	</mesh>
+</scene>
