@@ -3,7 +3,9 @@ import subprocess
 import fileinput
 import argparse
 import random
+import shutil
 import math
+import cv2
 import os
 
 renderedImageCounter = 0
@@ -140,6 +142,47 @@ def renderImages(lightType):
 
     subprocess.run(["nori.exe", "custom_noShadow.xml"])
 
+def alignImages(dstFolder):
+    global renderedImageCounter
+    noShadowImage = cv2.imread('custom_noShadow.png', cv2.IMREAD_COLOR)
+    depthMapImage = cv2.imread('custom_depth.png', cv2.IMREAD_COLOR)
+    lightMapImage = cv2.imread('custom_light.png', cv2.IMREAD_COLOR)
+    if lightType == 'point':
+        groundTruthImage = cv2.imread('custom_simple.png', cv2.IMREAD_COLOR)
+    else:
+        groundTruthImage = cv2.imread('custom_whitted.png', cv2.IMREAD_COLOR)
+
+    alignedImage = np.concatenate((noShadowImage, lightMapImage, depthMapImage, groundTruthImage), axis=1)
+    cv2.imwrite(os.path.join(dstFolder, str(renderedImageCounter) + '.png'), alignedImage)
+    renderedImageCounter += 1
+
+def randomChooseK(inList, k):
+    retList = []
+    for i in range(k):
+        index = random.choice(range(len(inList)))
+        retList.append(inList.pop(index))
+
+    return retList
+
+def splitImages(dstFolder, valCount, testCount, alignedImages):
+    os.mkdir(os.path.join(dstFolder, 'train'))
+    os.mkdir(os.path.join(dstFolder, 'test'))
+    os.mkdir(os.path.join(dstFolder, 'val'))
+
+    # randomly choose images for validation set
+    valAlignedImages = randomChooseK(alignedImages, valCount)
+    # now randomly choose images for test set
+    testAlignedImages = randomChooseK(alignedImages, testCount)
+    # remaining images go in train set
+    trainAlignedImages = alignedImages
+
+    # move the images to their respective folders
+    for index, imagePath in enumerate(valAlignedImages):
+    	shutil.move(imagePath, os.path.join(dstFolder, os.path.join('val', str(index) + '.png')))
+    for index, imagePath in enumerate(testAlignedImages):
+    	shutil.move(imagePath, os.path.join(dstFolder, os.path.join('test', str(index) + '.png')))
+    for index, imagePath in enumerate(trainAlignedImages):
+    	shutil.move(imagePath, os.path.join(dstFolder, os.path.join('train', str(index) + '.png')))
 
 def randomizeObject(meshFile):
     fileName = meshFile
@@ -226,13 +269,23 @@ if __name__ == "__main__":
     parser.add_argument('-mesh', '--mesh_folder_path', required=True, help="Path to meshes folder")
     parser.add_argument('-light', '--lightType', required=True, help="Light type: 'point' or 'area'")
     parser.add_argument('-dst', '--dst_folder_path', required=True, help="Folder name where aligned images are to be saved")
+    parser.add_argument('-val', type=int, required=True, help="Percentage of images in validation set")
+    parser.add_argument('-test', type=int, required=True, help="Percentage of images in test set")
     
     args = parser.parse_args()    
     meshFolder = args.mesh_folder_path
     lightType = args.lightType
     dstFolder = args.dst_folder_path
+    valPercentage = args.val
+    testPercentage = args.test
 
     meshFiles = [os.path.join(meshFolder, f) for f in os.listdir(meshFolder) if os.path.isfile(os.path.join(meshFolder, f))]
+    
+    # create directory to store newly generated aligned images
+    if os.path.exists(dstFolder):
+        shutil.rmtree(dstFolder)
+
+    os.mkdir(dstFolder)
 
     for meshFile in meshFiles:
         for i in range(10):
@@ -241,4 +294,13 @@ if __name__ == "__main__":
             #randomizeLight(lightType)
             # render the images now!
             renderImages(lightType)
-            #alignImages(dstFolder)
+            alignImages(dstFolder)
+
+    # split the images into train, test and validation folders
+    alignedImages = [os.path.join(dstFolder, f) for f in os.listdir(dstFolder) if os.path.isfile(os.path.join(dstFolder, f))]
+    imgCount = len(alignedImages)
+    valCount = int(valPercentage * imgCount / 100)
+    testCount = int(testPercentage * imgCount / 100)
+    print("valCount: ", valCount)
+    print("testCount: ", testCount)
+    splitImages(dstFolder, valCount, testCount, alignedImages)
