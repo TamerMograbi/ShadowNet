@@ -7,6 +7,7 @@ import shutil
 import math
 import cv2
 import os
+import sys
 
 renderedImageCounter = 0
 
@@ -133,23 +134,27 @@ def printFirstThreeVertices(geometricVertices):
 def renderImages(lightType):
     if lightType == 'point':
         subprocess.run(["nori.exe", "custom_simple.xml"])
+        subprocess.run(["nori.exe", "custom_light_point.xml"])
+        subprocess.run(["nori.exe", "custom_depth_point.xml"])
+        subprocess.run(["nori.exe", "custom_noShadow_point.xml"])
     else:
         subprocess.run(["nori.exe", "custom_whitted.xml"])
-
-    subprocess.run(["nori.exe", "custom_light.xml"])
-
-    subprocess.run(["nori.exe", "custom_depth.xml"])
-
-    subprocess.run(["nori.exe", "custom_noShadow.xml"])
+        subprocess.run(["nori.exe", "custom_light.xml"])
+        subprocess.run(["nori.exe", "custom_depth.xml"])
+        subprocess.run(["nori.exe", "custom_noShadow.xml"])
 
 def alignImages(dstFolder):
     global renderedImageCounter
-    noShadowImage = cv2.imread('custom_noShadow.png', cv2.IMREAD_COLOR)
-    depthMapImage = cv2.imread('custom_depth.png', cv2.IMREAD_COLOR)
-    lightMapImage = cv2.imread('custom_light.png', cv2.IMREAD_COLOR)
-    if lightType == 'point':
-        groundTruthImage = cv2.imread('custom_simple.png', cv2.IMREAD_COLOR)
-    else:
+    # these weird names can be changed if nori.exe is updated :)
+    # it was helpful when there was only one xml file
+    noShadowImage = cv2.imread('custom_noShadow_point_noShadows.png', cv2.IMREAD_COLOR)
+    depthMapImage = cv2.imread('custom_depth_point_depthMap.png', cv2.IMREAD_COLOR)
+    lightMapImage = cv2.imread('custom_light_point_lightDepth.png', cv2.IMREAD_COLOR)
+    groundTruthImage = cv2.imread('custom_simple_simple.png', cv2.IMREAD_COLOR)
+    if lightType == 'area':
+        noShadowImage = cv2.imread('custom_noShadow.png', cv2.IMREAD_COLOR)
+        depthMapImage = cv2.imread('custom_depth.png', cv2.IMREAD_COLOR)
+        lightMapImage = cv2.imread('custom_light.png', cv2.IMREAD_COLOR)
         groundTruthImage = cv2.imread('custom_whitted.png', cv2.IMREAD_COLOR)
 
     alignedImage = np.concatenate((noShadowImage, lightMapImage, depthMapImage, groundTruthImage), axis=1)
@@ -184,7 +189,8 @@ def splitImages(dstFolder, valCount, testCount, alignedImages):
     for index, imagePath in enumerate(trainAlignedImages):
     	shutil.move(imagePath, os.path.join(dstFolder, os.path.join('train', str(index) + '.png')))
 
-def randomizeObject(meshFile):
+
+def randomizeObject(meshFile, meshIsAreaLight=False):
     fileName = meshFile
     objFile = open(fileName, 'r')
     # sort all the strings in their corresponding lists
@@ -219,14 +225,15 @@ def randomizeObject(meshFile):
     # scale the object so that its vertices have 5 units standard deviation from the mean
     geometricVertices = centerAndScaleObject(geometricVertices, com)
 
-    # ROTATION SHOULD HAPPEN AFTER CENTERING AND SCALING THE OBJECT AND BEFORE TRANSLATING IT
-    # TO ITS NEW POSITION, IT BECOMES EASIER THAT WAY
-    # create rotation matrix if needed
-    rotationMatrix = getRotationMatrix()
+    if not meshIsAreaLight:
+        # ROTATION SHOULD HAPPEN AFTER CENTERING AND SCALING THE OBJECT AND BEFORE TRANSLATING IT
+        # TO ITS NEW POSITION, IT BECOMES EASIER THAT WAY
+        # create rotation matrix if needed
+        rotationMatrix = getRotationMatrix()
 
-    # rotate the object
-    geometricVertices = rotateObject(geometricVertices, rotationMatrix)
-    # CAUTION! MIGHT NEED TO CHANGE THE VERTEX NORMALS TOO
+        # rotate the object
+        geometricVertices = rotateObject(geometricVertices, rotationMatrix)
+        # CAUTION! MIGHT NEED TO CHANGE THE VERTEX NORMALS TOO
 
     # get axis aligned bounding box of the object
     bbox = getAxisAlignedBoundingBox(geometricVertices)
@@ -264,6 +271,44 @@ def randomizeObject(meshFile):
     objFile.close()
 
 
+def put_rand_light_pos(random_pos_str, xml_file_name):
+    for line in fileinput.input(xml_file_name, inplace=1):
+        # if current line has string 'position' in it, then replace line with string that contains random light position
+        if 'position' in line:
+            line = random_pos_str + '\n'
+        # add current line to file. (only file that contains string 'position' is changed
+        sys.stdout.write(line)
+
+
+def randomizeLight(lightType):
+
+    # use randomizeObject if we are using area light (need to skip rotations in this case)
+    if lightType == 'area':
+        lightMeshObj = './light.obj'  # is this the right path to give to randomizeObject?
+        randomizeObject(lightMeshObj,meshIsAreaLight=True)
+        return
+    # we only get to this point if we are dealing with a point light
+    # pick 3 random points in the following intervals and change light position in xml file
+    scene_min_x = -10
+    scene_max_x = 10
+    scene_min_y = -10
+    scene_max_y = 10
+    scene_min_z = 10
+    scene_max_z = 20  # with these z bounderies, the light will only be outside box (in respect to z axis)
+    d = 1  # don't want light exactly on edge of box
+    randX = random.uniform(scene_min_x + d, scene_max_x - d)
+    randY = random.uniform(scene_min_y + d, scene_max_y - d)
+    randZ = random.uniform(scene_min_z + d, scene_max_z - d)
+
+    rand_pos = str(randX) + "," + str(randY) + "," + str(randZ)
+    random_pos_str = "<point name=\"position\" value=\"" + rand_pos + "\"/>"
+
+    put_rand_light_pos(random_pos_str, 'custom_simple.xml')
+    put_rand_light_pos(random_pos_str, 'custom_depth_point.xml')
+    put_rand_light_pos(random_pos_str, 'custom_light_point.xml')
+    put_rand_light_pos(random_pos_str, 'custom_noShadow_point.xml')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="Data generator")
     parser.add_argument('-mesh', '--mesh_folder_path', required=True, help="Path to meshes folder")
@@ -286,12 +331,11 @@ if __name__ == "__main__":
         shutil.rmtree(dstFolder)
 
     os.mkdir(dstFolder)
-
     for meshFile in meshFiles:
         for i in range(10):
             # create images for 10 random poses of this mesh
             randomizeObject(meshFile)
-            #randomizeLight(lightType)
+            randomizeLight(lightType)
             # render the images now!
             renderImages(lightType)
             alignImages(dstFolder)

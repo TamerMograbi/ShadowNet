@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 
 <scene>
-	<integrator type="simple">
+	<integrator type="lightDepth">
 <point name="position" value=""/>
 		<color name="energy" value="3.76e2, 3.76e2, 3.76e2"/>
 	</integrator>
