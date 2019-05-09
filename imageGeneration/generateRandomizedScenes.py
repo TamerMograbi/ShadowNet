@@ -33,13 +33,16 @@ def getCenterOfMass(geometricVertices):
 
     return com
 
-def centerAndScaleObject(geometricVertices, com):
+def centerAndScaleObject(geometricVertices, com, resize, meshIsAreaLight):
     """Translate the object vertices so that they are centered around the origin"""
     geometricVertices = geometricVertices - com
 
-    stdev = np.std(geometricVertices, axis=1) / 2.0
+    stdev = np.std(geometricVertices, axis=1) / float(resize)
     stdev = stdev.reshape(3,1)
-    geometricVertices = geometricVertices / stdev
+
+    if not meshIsAreaLight:
+        # do not scale the area light mesh object
+        geometricVertices = geometricVertices / stdev
 
     return geometricVertices
 
@@ -78,10 +81,15 @@ def positionObjectInTheBox(geometricVertices, bbox, com):
     # assumption - the object can fit inside the box scene entirely
     # the scaling to have 5 units standard deviation is just for that
 
-    # create the range tuple in which xCom of object can lie - (min, max)
+    # create the range tuple in which com of object can lie - (min, max)
     xComRange = (-10.0 - bbox['xmin'], 10.0 - bbox['xmax'])
     yComRange = (-10.0 - bbox['ymin'], 10.0 - bbox['ymax'])
-    zComRange = (20.0 + bbox['zmin'], 30.0 - bbox['zmax'])
+    zComRange = (20.0 - bbox['zmin'], 30.0 - bbox['zmax'])
+
+    # skip this object if it does not fit inside the box scene
+    if (xComRange[0] > xComRange[1]) or (yComRange[0] > yComRange[1]) or (zComRange[0] > zComRange[1]):
+        print("\n\nMisfit\n\n")
+        return geometricVertices, False
 
     # generate the position - (x,y,z) for the com of the object within the above computed range
     # assume uniform distribution
@@ -94,12 +102,41 @@ def positionObjectInTheBox(geometricVertices, bbox, com):
     #newCom = np.array([0,-5,25]).reshape(3,1)
     geometricVertices = geometricVertices + newCom
 
+    return geometricVertices, True
+
+def positionLightInTheBox(geometricVertices, bbox, com):
+    # create the range tuple in which com of object can lie - (min, max)
+    xComRange = (-10.0 - bbox['xmin'], 10.0 - bbox['xmax'])
+    yComRange = (-10.0 - bbox['ymin'], 10.0 - bbox['ymax'])
+    zComRange = (20.0 - bbox['zmin'], 30.0 - bbox['zmax'])
+
+    # skip this object if it does not fit inside the box scene
+    if (xComRange[0] > xComRange[1]) or (yComRange[0] > yComRange[1]) or (zComRange[0] > zComRange[1]):
+        return geometricVertices, False
+
+    # generate the position - (x,y,z) for the com of the object within the above computed range
+    # assume uniform distribution
+    x = round(random.uniform(xComRange[0], xComRange[1]), 2)
+    y = 9.5 # do not change y, the area light has to remain on the ceiling only
+    z = round(random.uniform(zComRange[0], zComRange[1]), 2)
+
+    # translate the object so that it is now located at the above randomly generated location
+    newCom = np.array([x,y,z]).reshape(3,1)
+    #newCom = np.array([0,-5,25]).reshape(3,1)
+    geometricVertices = geometricVertices + newCom
+
     return geometricVertices
 
-def npMatrixToStrings(geometricVertices):
+def npMatrixToStrings(geometricVertices, dataType):
     stringList = []
+    if dataType == 'geometricVertices':
+        label = 'v '
+    else:
+        # we are modifying vertex normals
+        label = 'vn '
+
     for vertex in geometricVertices.T:
-        line = "v " + str(vertex[0]) + " " + str(vertex[1]) + " " + str(vertex[2]) + "\n"
+        line = label + str(vertex[0]) + " " + str(vertex[1]) + " " + str(vertex[2]) + "\n"
         stringList.append(line)
 
     return stringList
@@ -190,7 +227,7 @@ def splitImages(dstFolder, valCount, testCount, alignedImages):
     	shutil.move(imagePath, os.path.join(dstFolder, os.path.join('train', str(index) + '.png')))
 
 
-def randomizeObject(meshFile, meshIsAreaLight=False):
+def randomizeObject(meshFile, resize, meshIsAreaLight=False):
     fileName = meshFile
     objFile = open(fileName, 'r')
     # sort all the strings in their corresponding lists
@@ -222,8 +259,8 @@ def randomizeObject(meshFile, meshIsAreaLight=False):
     com = getCenterOfMass(geometricVertices)
 
     # arrange the vertices around the center of mass
-    # scale the object so that its vertices have 5 units standard deviation from the mean
-    geometricVertices = centerAndScaleObject(geometricVertices, com)
+    # scale the object so that its vertices have 2 units standard deviation from the mean
+    geometricVertices = centerAndScaleObject(geometricVertices, com, resize, meshIsAreaLight)
 
     if not meshIsAreaLight:
         # ROTATION SHOULD HAPPEN AFTER CENTERING AND SCALING THE OBJECT AND BEFORE TRANSLATING IT
@@ -234,23 +271,43 @@ def randomizeObject(meshFile, meshIsAreaLight=False):
         # rotate the object
         geometricVertices = rotateObject(geometricVertices, rotationMatrix)
         # CAUTION! MIGHT NEED TO CHANGE THE VERTEX NORMALS TOO
+        # it probably was causing problems, so also rotating the vertex normals now!
+        vertexNormals = createNumpyMatrix(vertexNormals)
+        vertexNormals = rotateObject(vertexNormals, rotationMatrix)
 
     # get axis aligned bounding box of the object
     bbox = getAxisAlignedBoundingBox(geometricVertices)
     # bbox will have 6 elements
     # xLeft, xRight, yTop, yBottom, zNear, zFar
 
-    # translate the object to position it SOMEWHERE in the box scene
-    geometricVertices = positionObjectInTheBox(geometricVertices, bbox, com)
+    bRenderImage = True
+    if not meshIsAreaLight:
+        # translate the object to position it SOMEWHERE in the box scene
+        geometricVertices, bRenderImage = positionObjectInTheBox(geometricVertices, bbox, com)
+    else:
+        # translate the area light to some position outside the box
+        geometricVertices = positionLightInTheBox(geometricVertices, bbox, com)
+
+    # if object cannot be positioned in the box, skip it, do not render that image
+    if not bRenderImage:
+        return bRenderImage
 
     # convert the modified geometricVertices back to strings
-    geometricVertices = npMatrixToStrings(geometricVertices)
+    geometricVertices = npMatrixToStrings(geometricVertices, 'geometricVertices')
+
+    if not meshIsAreaLight:
+        # convert the modified vertexNormals back to strings
+        vertexNormals = npMatrixToStrings(vertexNormals, 'vertexNormals')
 
     # remove texture vertices information from faces list
     #faces = removeTextureVertices(faces)
 
     # create a temporary obj file for the modified object
-    fileName = 'tempMesh.obj'
+    if meshIsAreaLight:
+        fileName = 'tempLight.obj'
+    else:
+        fileName = 'tempMesh.obj'
+
     objFile = open(fileName, 'w')
     # write the geometric vertices to file first up
     for line in geometricVertices:
@@ -270,6 +327,8 @@ def randomizeObject(meshFile, meshIsAreaLight=False):
 
     objFile.close()
 
+    return bRenderImage
+
 
 def put_rand_light_pos(random_pos_str, xml_file_name):
     for line in fileinput.input(xml_file_name, inplace=1):
@@ -281,12 +340,12 @@ def put_rand_light_pos(random_pos_str, xml_file_name):
 
 
 def randomizeLight(lightType):
-
     # use randomizeObject if we are using area light (need to skip rotations in this case)
     if lightType == 'area':
-        lightMeshObj = './light.obj'  # is this the right path to give to randomizeObject?
-        randomizeObject(lightMeshObj,meshIsAreaLight=True)
+        lightMeshObj = './light.obj'  # is this the right path to give to randomizeObject? yes it is!
+        randomizeObject(lightMeshObj, resize=1, meshIsAreaLight=True)
         return
+        
     # we only get to this point if we are dealing with a point light
     # pick 3 random points in the following intervals and change light position in xml file
     scene_min_x = -10
@@ -307,6 +366,7 @@ def randomizeLight(lightType):
     put_rand_light_pos(random_pos_str, 'custom_depth_point.xml')
     put_rand_light_pos(random_pos_str, 'custom_light_point.xml')
     put_rand_light_pos(random_pos_str, 'custom_noShadow_point.xml')
+
 
 
 if __name__ == "__main__":
@@ -330,11 +390,16 @@ if __name__ == "__main__":
     if os.path.exists(dstFolder):
         shutil.rmtree(dstFolder)
 
+    bRenderImage = False
+    resize = 2
     os.mkdir(dstFolder)
+
     for meshFile in meshFiles:
         for i in range(10):
             # create images for 10 random poses of this mesh
-            randomizeObject(meshFile)
+            bRenderImage = randomizeObject(meshFile, resize)
+            if not bRenderImage:
+                continue
             randomizeLight(lightType)
             # render the images now!
             renderImages(lightType)
