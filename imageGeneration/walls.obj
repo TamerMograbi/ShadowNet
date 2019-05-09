@@ -14,9 +14,9 @@ vt 0.000000 1.000000
 
 #o ceiling
 #usemtl ceiling
-#s 1
-#f 1/1 2/1 3/1
-#f 4/1 1/1 3/1
+s 1
+f 1/1 2/1 3/1
+f 4/1 1/1 3/1
 
 #o floor
 #usemtl floor
