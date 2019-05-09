@@ -3,7 +3,7 @@
 <scene>
 	<integrator type="depthMap">
 <point name="position" value=""/>
-		<color name="energy" value="3.76e2, 3.76e2, 3.76e2"/>
+		<color name="energy" value="3.76e3, 3.76e3, 3.76e3"/>
 	</integrator>
 
 	<camera type="perspective">
@@ -18,7 +18,7 @@
 	</camera>
 	
 	<sampler type="independent">
-		<integer name="sampleCount" value="512"/>
+		<integer name="sampleCount" value="32"/>
 	</sampler>
 
 	<mesh type="obj">
