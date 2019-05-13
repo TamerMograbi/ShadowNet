@@ -162,6 +162,26 @@ def removeTextureVertices(faces):
 
     return newFaces
 
+def removeVertexNormals(faces):
+    newFaces = []
+    for line in faces:
+        elements = line.split()[1:]
+        # elements = ['f', 'v/vt/vn', 'v/vt/vn', 'v/vt/vn']
+        # elements = ['f', '1231/14134/2341', '12/24/432', '342/345/67']
+        # we want following
+        # elements = ['f', '1231/14134', '12/24', '342/345']
+        for index, face in enumerate(elements):
+            #startIndex = face.find('/')
+            endIndex = face.rfind('/')
+            face = face[:endIndex]
+
+            elements[index] = face
+
+        newLine = 'f ' + elements[0] + " " + elements[1] + " " + elements[2] + "\n"
+        newFaces.append(newLine)
+
+    return newFaces
+
 def printFirstThreeVertices(geometricVertices):
     print(len(geometricVertices))
     for i in range(6):
@@ -300,7 +320,7 @@ def randomizeObject(meshFile, resize, meshIsAreaLight=False):
         vertexNormals = npMatrixToStrings(vertexNormals, 'vertexNormals')
 
     # remove texture vertices information from faces list
-    #faces = removeTextureVertices(faces)
+    #faces = removeVertexNormals(faces)
 
     # create a temporary obj file for the modified object
     if meshIsAreaLight:
@@ -384,7 +404,7 @@ if __name__ == "__main__":
     valPercentage = args.val
     testPercentage = args.test
 
-    meshFiles = [os.path.join(meshFolder, f) for f in os.listdir(meshFolder) if os.path.isfile(os.path.join(meshFolder, f))]
+    meshFiles = [os.path.join(meshFolder, f) for f in os.listdir(meshFolder) if os.path.isfile(os.path.join(meshFolder, f)) and os.path.splitext(f)[1] == ".obj"]
     
     # create directory to store newly generated aligned images
     if os.path.exists(dstFolder):
