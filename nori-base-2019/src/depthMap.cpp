@@ -34,7 +34,7 @@ public:
 		
 		float distance = (x - ray.o).norm();//distance beween origin of ray to position on mesh
 
-		return Color3f(1.f/distance);
+		return Color3f(2.0f/distance);
 	}
 
 
