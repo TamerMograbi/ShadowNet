@@ -80,10 +80,11 @@ class AlignedDataset(BaseDataset):
         width = AB.shape[1]
         #print("AB shape: ", AB.shape)
 
+        """
         noShadow = AB[:, :int(width/4), :]
         lightMap = AB[:, int(width/4):int(width/2), :]
         depthMap = AB[:, int(width/2):3 * int(width/4), :]
-
+        
         A = np.stack((noShadow[:,:,0], noShadow[:,:,1], noShadow[:,:,2], \
                       lightMap[:,:,0], lightMap[:,:,1], lightMap[:,:,2], \
                       depthMap[:,:,0]), axis=2)
@@ -92,6 +93,29 @@ class AlignedDataset(BaseDataset):
         #print("A before: ", A.shape)
         # B has 3 channels
         B = AB[:, 3*int(width/4):width, :]
+        """
+
+        noShadow = AB[:, :int(width/11), :]
+        lightMap = AB[:, int(width/11):2 * int(width/11), :]
+        depthMap0 = AB[:, 2 * int(width/11):3 * int(width/11), :]
+        depthMap1 = AB[:, 3 * int(width / 11):4 * int(width / 11), :]
+        depthMap2 = AB[:, 4 * int(width / 11):5 * int(width / 11), :]
+        depthMap3 = AB[:, 5 * int(width / 11):6 * int(width / 11), :]
+        depthMap4 = AB[:, 6 * int(width / 11):7 * int(width / 11), :]
+        depthMap5 = AB[:, 7 * int(width / 11):8 * int(width / 11), :]
+        depthMap6 = AB[:, 8 * int(width / 11):9 * int(width / 11), :]
+        depthMap7 = AB[:, 9 * int(width / 11):10 * int(width / 11), :]
+
+        A = np.stack((noShadow[:,:,0], noShadow[:,:,1], noShadow[:,:,2], \
+                      lightMap[:,:,0], lightMap[:,:,1], lightMap[:,:,2], \
+                      depthMap0[:,:,0], depthMap1[:,:,0], depthMap2[:,:,0], \
+                      depthMap3[:,:,0], depthMap4[:,:,0], depthMap5[:,:,0], \
+                      depthMap6[:,:,0], depthMap7[:,:,0]), axis=2)
+        # A has 14 channels - 3, 3, 8
+
+        #print("A before: ", A.shape)
+        # B has 3 channels
+        B = AB[:, 10*int(width/11):width, :]
 
         A_transform = get_transform(self.opt, None, A.shape[2]) # third argument is number of channels
         B_transform = get_transform(self.opt, None, B.shape[2]) # third argument is number of channels

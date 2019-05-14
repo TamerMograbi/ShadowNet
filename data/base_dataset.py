@@ -110,6 +110,8 @@ def get_transform(opt, params=None, numChannels=0, method=Image.BICUBIC, convert
             transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
         elif numChannels == 7:
             transform_list += [transforms.Normalize((0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5))]
+        elif numChannels == 14:
+            transform_list += [transforms.Normalize((0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5))]
 
     return transforms.Compose(transform_list)
 """
