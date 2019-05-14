@@ -9,7 +9,7 @@ import cv2
 import os
 import sys
 
-renderedImageCounter = 0
+global counter
 
 def createNumpyMatrix(geometricVertices):
     """Parse the strings from the obj file and convert them into numpy matrix of floats to perform math efficiently"""
@@ -46,14 +46,15 @@ def centerAndScaleObject(geometricVertices, com, resize, meshIsAreaLight):
 
     return geometricVertices
 
-def getRotationMatrix():
-    angleX = round(random.uniform(0, 2*math.pi), 2)
-    angleY = round(random.uniform(0, 2*math.pi), 2)
-    angleZ = round(random.uniform(0, 2*math.pi), 2)
+def getRotationMatrix(angleX=0.0, angleY=0.0, angleZ=0.0):
+    if angleX == 0.0 and angleY == 0.0 and angleZ == 0.0:
+        angleX = round(random.uniform(0, 2*math.pi), 2)
+        angleY = round(random.uniform(0, 2*math.pi), 2)
+        angleZ = round(random.uniform(0, 2*math.pi), 2)
 
-    Rx = np.array([[1, 0, 0], [0, math.cos(angleX), -math.sin(angleX)], [0, math.sin(angleX), math.cos(angleX)]])
-    Ry = np.array([[math.cos(angleX), 0, math.sin(angleX)], [0, 1, 0], [-math.sin(angleX), 0, math.cos(angleX)]])
-    Rz = np.array([[math.cos(angleX), -math.sin(angleX), 0], [math.sin(angleX), math.cos(angleX), 0], [0, 0, 1]])
+    Rx = np.array([[1, 0, 0], [0, math.cos(angleX), -math.sin(angleX)], [0, math.sin(angleX), math.cos(angleX)]], dtype=np.float)
+    Ry = np.array([[math.cos(angleY), 0, math.sin(angleY)], [0, 1, 0], [-math.sin(angleY), 0, math.cos(angleY)]], dtype=np.float)
+    Rz = np.array([[math.cos(angleZ), -math.sin(angleZ), 0], [math.sin(angleZ), math.cos(angleZ), 0], [0, 0, 1]], dtype=np.float)
 
     R = np.matmul(np.matmul(Rx, Ry), Rz)
     #R = np.identity(3)
@@ -99,7 +100,7 @@ def positionObjectInTheBox(geometricVertices, bbox, com):
 
     # translate the object so that it is now located at the above randomly generated location
     newCom = np.array([x,y,z]).reshape(3,1)
-    #newCom = np.array([0,-5,25]).reshape(3,1)
+    #newCom = np.array([0,0,25]).reshape(3,1)
     geometricVertices = geometricVertices + newCom
 
     return geometricVertices, True
@@ -150,10 +151,12 @@ def removeTextureVertices(faces):
         # we want following
         # elements = ['f', '1231/14134/2341', '12/24/432', '342/345/67']
         for index, face in enumerate(elements):
-            startIndex = face.find('/')
-            endIndex = face.rfind('/')+1
-            toReplace = face[startIndex:endIndex]
-            face = face.replace(toReplace, "//")
+            #startIndex = face.find('/')
+            #endIndex = face.rfind('/')+1
+            endIndex = face.rfind('/')
+            #toReplace = face[startIndex:endIndex]
+            #face = face.replace(toReplace, "//")
+            face = face[:endIndex]
 
             elements[index] = face
 
@@ -171,7 +174,6 @@ def removeVertexNormals(faces):
         # we want following
         # elements = ['f', '1231/14134', '12/24', '342/345']
         for index, face in enumerate(elements):
-            #startIndex = face.find('/')
             endIndex = face.rfind('/')
             face = face[:endIndex]
 
@@ -192,7 +194,7 @@ def renderImages(lightType):
     if lightType == 'point':
         subprocess.run(["nori.exe", "custom_simple.xml"])
         subprocess.run(["nori.exe", "custom_light_point.xml"])
-        subprocess.run(["nori.exe", "custom_depth_point.xml"])
+        ##subprocess.run(["nori.exe", "custom_depth_point.xml"])
         subprocess.run(["nori.exe", "custom_noShadow_point.xml"])
     else:
         subprocess.run(["nori.exe", "custom_whitted.xml"])
@@ -200,23 +202,34 @@ def renderImages(lightType):
         subprocess.run(["nori.exe", "custom_depth.xml"])
         subprocess.run(["nori.exe", "custom_noShadow.xml"])
 
-def alignImages(dstFolder):
-    global renderedImageCounter
+def alignImages(dstFolder, fileName):
+    global counter
     # these weird names can be changed if nori.exe is updated :)
     # it was helpful when there was only one xml file
     noShadowImage = cv2.imread('custom_noShadow_point_noShadows.png', cv2.IMREAD_COLOR)
-    depthMapImage = cv2.imread('custom_depth_point_depthMap.png', cv2.IMREAD_COLOR)
+    #depthMapImage = cv2.imread('custom_depth_point_depthMap.png', cv2.IMREAD_COLOR)
+    depthMapImage0 = cv2.imread('8viewDepthMap_0.png', cv2.IMREAD_COLOR)
+    depthMapImage1 = cv2.imread('8viewDepthMap_1.png', cv2.IMREAD_COLOR)
+    depthMapImage2 = cv2.imread('8viewDepthMap_2.png', cv2.IMREAD_COLOR)
+    depthMapImage3 = cv2.imread('8viewDepthMap_3.png', cv2.IMREAD_COLOR)
+    depthMapImage4 = cv2.imread('8viewDepthMap_4.png', cv2.IMREAD_COLOR)
+    depthMapImage5 = cv2.imread('8viewDepthMap_5.png', cv2.IMREAD_COLOR)
+    depthMapImage6 = cv2.imread('8viewDepthMap_6.png', cv2.IMREAD_COLOR)
+    depthMapImage7 = cv2.imread('8viewDepthMap_7.png', cv2.IMREAD_COLOR)
+
     lightMapImage = cv2.imread('custom_light_point_lightDepth.png', cv2.IMREAD_COLOR)
     groundTruthImage = cv2.imread('custom_simple_simple.png', cv2.IMREAD_COLOR)
+
     if lightType == 'area':
         noShadowImage = cv2.imread('custom_noShadow.png', cv2.IMREAD_COLOR)
         depthMapImage = cv2.imread('custom_depth.png', cv2.IMREAD_COLOR)
         lightMapImage = cv2.imread('custom_light.png', cv2.IMREAD_COLOR)
         groundTruthImage = cv2.imread('custom_whitted.png', cv2.IMREAD_COLOR)
 
-    alignedImage = np.concatenate((noShadowImage, lightMapImage, depthMapImage, groundTruthImage), axis=1)
-    cv2.imwrite(os.path.join(dstFolder, str(renderedImageCounter) + '.png'), alignedImage)
-    renderedImageCounter += 1
+    alignedImage = np.concatenate((noShadowImage, lightMapImage, depthMapImage0, depthMapImage1, depthMapImage2, depthMapImage3, depthMapImage4, depthMapImage5, depthMapImage6, depthMapImage7, groundTruthImage), axis=1)
+    cv2.imwrite(os.path.join(dstFolder, fileName + '_' + str(counter).zfill(4) + '.png'), alignedImage)
+    counter += 1
+    #cv2.imwrite(os.path.join(dstFolder, fileName + '.png'), groundTruthImage)
 
 def randomChooseK(inList, k):
     retList = []
@@ -320,7 +333,8 @@ def randomizeObject(meshFile, resize, meshIsAreaLight=False):
         vertexNormals = npMatrixToStrings(vertexNormals, 'vertexNormals')
 
     # remove texture vertices information from faces list
-    #faces = removeVertexNormals(faces)
+    faces = removeVertexNormals(faces)
+    faces = removeTextureVertices(faces)
 
     # create a temporary obj file for the modified object
     if meshIsAreaLight:
@@ -334,12 +348,12 @@ def randomizeObject(meshFile, resize, meshIsAreaLight=False):
         objFile.write(line)
     # next fill up the texture vertices
     objFile.write("\n")
-    for line in textureVertices:
-        objFile.write(line)
+    #for line in textureVertices:
+    #    objFile.write(line)
     # next fill up the vertex normals
     objFile.write("\n")
-    for line in vertexNormals:
-        objFile.write(line)
+    #for line in vertexNormals:
+    #    objFile.write(line)
     # next fill up the faces
     objFile.write("\n")
     for line in faces:
@@ -387,6 +401,110 @@ def randomizeLight(lightType):
     put_rand_light_pos(random_pos_str, 'custom_light_point.xml')
     put_rand_light_pos(random_pos_str, 'custom_noShadow_point.xml')
 
+def get8Views(meshFile):
+    if os.path.exists('8viewDepthMap_0.png'):
+        os.remove('8viewDepthMap_0.png')
+    if os.path.exists('8viewDepthMap_1.png'):
+        os.remove('8viewDepthMap_1.png')
+    if os.path.exists('8viewDepthMap_2.png'):
+        os.remove('8viewDepthMap_2.png')
+    if os.path.exists('8viewDepthMap_3.png'):
+        os.remove('8viewDepthMap_3.png')
+    if os.path.exists('8viewDepthMap_4.png'):
+        os.remove('8viewDepthMap_4.png')
+    if os.path.exists('8viewDepthMap_5.png'):
+        os.remove('8viewDepthMap_5.png')
+    if os.path.exists('8viewDepthMap_6.png'):
+        os.remove('8viewDepthMap_6.png')
+    if os.path.exists('8viewDepthMap_7.png'):
+        os.remove('8viewDepthMap_7.png')
+
+    views = [(math.pi/4, math.pi/4), (math.pi/4, -math.pi/4), (math.pi/4, 3*math.pi/4), (math.pi/4, -3*math.pi/4),
+            (-math.pi/4, math.pi/4), (-math.pi/4, -math.pi/4), (-math.pi/4, 3*math.pi/4), (-math.pi/4, -3*math.pi/4)]
+
+    for index, view in enumerate(views):
+        fileName = meshFile
+        objFile = open(fileName, 'r')
+        # sort all the strings in their corresponding lists
+        textureVertices = []
+        geometricVertices = []
+        vertexNormals = []
+        faces = []
+        for line in objFile:
+            if line[:2] == 'vt':
+                # texture vertices
+                textureVertices.append(line)
+            elif line[:2] == 'vn':
+                # vertex normals
+                vertexNormals.append(line)
+            elif line[0] == 'v':
+                # geometricVertices
+                geometricVertices.append(line)
+            elif line[0] == 'f':
+                # faces
+                faces.append(line)
+            else:
+                continue
+        objFile.close()
+
+        # create numpy matrix from the vertices string
+        geometricVertices = createNumpyMatrix(geometricVertices)
+
+        # compute the center of mass of the geometric vertices matrix
+        com = getCenterOfMass(geometricVertices)
+
+        # arrange the vertices around the center of mass
+        # scale the object so that its vertices have 2 units standard deviation from the mean
+        geometricVertices = centerAndScaleObject(geometricVertices, com, resize, meshIsAreaLight=False)
+
+        rotationMatrix = getRotationMatrix(angleX=view[0], angleY=view[1], angleZ=0)
+        # rotate the object
+        geometricVertices = rotateObject(geometricVertices, rotationMatrix)
+        # CAUTION! MIGHT NEED TO CHANGE THE VERTEX NORMALS TOO
+        # it probably was causing problems, so also rotating the vertex normals now!
+        vertexNormals = createNumpyMatrix(vertexNormals)
+        vertexNormals = rotateObject(vertexNormals, rotationMatrix)
+
+        # position object in center of scene - this scene has no box
+        geometricVertices += np.array([0,0,25]).reshape(3,1)
+
+        # convert the modified geometricVertices back to strings
+        geometricVertices = npMatrixToStrings(geometricVertices, 'geometricVertices')
+
+        # convert the modified vertexNormals back to strings
+        vertexNormals = npMatrixToStrings(vertexNormals, 'vertexNormals')
+
+        # remove texture vertices information from faces list
+        faces = removeVertexNormals(faces)
+        faces = removeTextureVertices(faces)
+
+        # create a temporary obj file for the modified object
+        fileName = 'tempMesh.obj'
+
+        objFile = open(fileName, 'w')
+        # write the geometric vertices to file first up
+        for line in geometricVertices:
+            objFile.write(line)
+        # next fill up the texture vertices
+        objFile.write("\n")
+        #for line in textureVertices:
+        #    objFile.write(line)
+        # next fill up the vertex normals
+        objFile.write("\n")
+        #for line in vertexNormals:
+        #    objFile.write(line)
+        # next fill up the faces
+        objFile.write("\n")
+        for line in faces:
+            objFile.write(line)
+
+        objFile.close()
+
+        # render the depthmap
+        subprocess.run(["nori.exe", "custom_8view_depth.xml"])
+
+        os.rename('custom_8view_depth_depthMap.png', '8viewDepthMap_' + str(index) + '.png')
+
 
 
 if __name__ == "__main__":
@@ -404,7 +522,7 @@ if __name__ == "__main__":
     valPercentage = args.val
     testPercentage = args.test
 
-    meshFiles = [os.path.join(meshFolder, f) for f in os.listdir(meshFolder) if os.path.isfile(os.path.join(meshFolder, f)) and os.path.splitext(f)[1] == ".obj"]
+    meshFiles = [os.path.join(meshFolder, f) for f in sorted(os.listdir(meshFolder)) if os.path.isfile(os.path.join(meshFolder, f)) and os.path.splitext(f)[1] == ".obj"]
     
     # create directory to store newly generated aligned images
     if os.path.exists(dstFolder):
@@ -414,7 +532,13 @@ if __name__ == "__main__":
     resize = 2
     os.mkdir(dstFolder)
 
+    global counter
+
     for meshFile in meshFiles:
+        print(meshFile)
+        fileName = meshFile[meshFile.find('\\')+1:meshFile.find('.obj')]
+        get8Views(meshFile)
+        counter = 0
         for i in range(10):
             # create images for 10 random poses of this mesh
             bRenderImage = randomizeObject(meshFile, resize)
@@ -423,7 +547,7 @@ if __name__ == "__main__":
             randomizeLight(lightType)
             # render the images now!
             renderImages(lightType)
-            alignImages(dstFolder)
+            alignImages(dstFolder, fileName)
 
     # split the images into train, test and validation folders
     alignedImages = [os.path.join(dstFolder, f) for f in os.listdir(dstFolder) if os.path.isfile(os.path.join(dstFolder, f))]
@@ -432,4 +556,4 @@ if __name__ == "__main__":
     testCount = int(testPercentage * imgCount / 100)
     print("valCount: ", valCount)
     print("testCount: ", testCount)
-    splitImages(dstFolder, valCount, testCount, alignedImages)
+    #splitImages(dstFolder, valCount, testCount, alignedImages)
